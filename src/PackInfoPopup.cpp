@@ -58,7 +58,11 @@ std::filesystem::path PackInfoPopup::getPathInPack(const char* filename) const {
     if (std::filesystem::exists(m_pack->getResourcesPath() / fname)) {
         return m_pack->getResourcesPath() / fname;
     } else {
+        #ifdef GEODE_IS_ANDROID
+        return std::filesystem::path("assets") / fname;
+        #else
         return dirs::getGameDir() / "Resources" / fname;
+        #endif
     }
 }
 
