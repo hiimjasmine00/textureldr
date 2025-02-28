@@ -5,13 +5,13 @@
 
 class WackyBypassFont : public CCLabelBMFont {
 protected:
-    void setFntFile(std::filesystem::path fnt) {
+    bool setFntFile(std::filesystem::path fnt) {
         auto conf = FNTConfigLoadFile(fnt.string().c_str());
-        m_sFntFile = fnt.string();
         if (!conf) {
-            log::error("!conf ?????");
-            return;
+            log::error("Failed to load font {}", fnt.string());
+            return false;
         }
+        m_sFntFile = fnt.string();
         conf->retain();
         if (m_pConfiguration)
             m_pConfiguration->release();
@@ -22,6 +22,7 @@ protected:
             CCTextureCache::sharedTextureCache()->addImage(conf->getAtlasName(), false)
         );
         this->createFontChars();
+        return true;
     }
 
 public:
@@ -30,8 +31,9 @@ public:
         std::filesystem::path const& fnt
     ) {
         auto label = CCLabelBMFont::create();
-        static_cast<WackyBypassFont*>(label)->setFntFile(fnt); // NOLINT(*-pro-type-static-cast-downcast)
-        label->setString(text);
+        if (static_cast<WackyBypassFont*>(label)->setFntFile(fnt)) { // NOLINT(*-pro-type-static-cast-downcast)
+            label->setString(text);
+        }
         return label;
     }
 };
