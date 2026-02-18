@@ -8,6 +8,12 @@
 #include <vector>
 #include <string>
 
+#ifdef MY_MOD_ID
+#undef MY_MOD_ID
+#endif
+
+#define MY_MOD_ID "geode.texture-loader"
+
 namespace geode::texture_loader {
 
 inline bool isLoaded() {
@@ -26,21 +32,10 @@ struct Pack {
     std::filesystem::path resourcesPath;
 };
 
-namespace impl {
-    using EventGetAvailablePacks = geode::DispatchEvent<std::vector<Pack>*>;
-    using EventGetAppliedPacks = geode::DispatchEvent<std::vector<Pack>*>;
-}
+inline std::vector<Pack> getAvailablePacks() GEODE_EVENT_EXPORT_NORES(&getAvailablePacks, ());
 
-inline std::vector<Pack> getAvailablePacks() {
-    std::vector<Pack> result;
-    impl::EventGetAvailablePacks("geode.texture-loader/v1/get-available-packs", &result).post();
-    return result;
-}
-
-inline std::vector<Pack> getAppliedPacks() {
-    std::vector<Pack> result;
-    impl::EventGetAppliedPacks("geode.texture-loader/v1/get-applied-packs", &result).post();
-    return result;
-}
+inline std::vector<Pack> getAppliedPacks() GEODE_EVENT_EXPORT_NORES(&getAppliedPacks, ());
 
 }
+
+#undef MY_MOD_ID

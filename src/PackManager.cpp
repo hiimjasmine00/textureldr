@@ -62,7 +62,7 @@ size_t PackManager::loadPacks() {
             #ifdef GEODE_IS_WINDOWS
                 log::warn("Unable to load pack {}: {}", string::wideToUtf8(dir.path().wstring()), packRes.unwrapErr());
             #else
-                log::warn("Unable to load pack {}: {}", dir, packRes.unwrapErr());
+                log::warn("Unable to load pack {}: {}", dir.path(), packRes.unwrapErr());
             #endif
         } else {
             found.push_back(packRes.unwrap());

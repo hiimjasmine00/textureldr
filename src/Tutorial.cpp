@@ -3,59 +3,36 @@
 
 using namespace geode::prelude;
 
-Task<void> awaitAction(CCNode* target, CCFiniteTimeAction* action) {
-    auto [task, finish, _, isCancelled] = Task<void>::spawn();
-    auto* func = CallFuncExt::create([finish = std::move(finish), isCancelled = std::move(isCancelled)] {
-        if (!isCancelled()) {
-            finish(true);
-        }
+arc::Future<void> awaitAction(CCNode* target, CCFiniteTimeAction* action) {
+    auto [tx, rx] = arc::oneshot::channel<std::monostate>();
+
+    auto* func = CallFuncExt::create([tx = std::move(tx)] {
+        (void)tx.send({});
     });
     auto* seq = CCSequence::createWithTwoActions(action, func);
     target->runAction(seq);
-    return task;
+    (void)co_await rx.recv();
 }
 
-template <class T>
-class MyObjWrapper : public CCObject {
-protected:
-    T m_value;
-
-    MyObjWrapper(T&& value) : m_value(std::forward<T>(value)) {
-        this->autorelease();
-    }
-public:
-    static MyObjWrapper* create(T&& value) {
-        return new MyObjWrapper(std::forward<T>(value));
-    }
-    T& getValue() {
-        return m_value;
-    }
-};
-
 class AwaitButtonPress : public CCObject {
-    Task<void> m_task;
-    std::function<void(bool)> m_finish;
-    std::function<bool()> m_isCancelled;
+    std::pair<arc::oneshot::Sender<std::monostate>, arc::oneshot::Receiver<std::monostate>> m_channel;
+    arc::oneshot::RecvAwaiter<std::monostate> m_awaiter;
     SEL_MenuHandler m_oldSelector;
     CCObject* m_oldTarget;
 
-    AwaitButtonPress() {
+    AwaitButtonPress() : m_channel(arc::oneshot::channel<std::monostate>()), m_awaiter(m_channel.second.recv()) {
         this->autorelease();
-        auto [task, finish, _, isCancelled] = Task<void>::spawn();
-        m_task = std::move(task);
-        m_finish = std::move(finish);
-        m_isCancelled = std::move(isCancelled);
     }
 
 public:
-    static Task<void> create(CCMenuItem* item) {
+    static arc::oneshot::RecvAwaiter<std::monostate> create(CCMenuItem* item) {
         auto* obj = new AwaitButtonPress();
         obj->m_oldSelector = item->m_pfnSelector;
         obj->m_oldTarget = item->m_pListener;
         item->m_pfnSelector = menu_selector(AwaitButtonPress::onPress);
         item->m_pListener = obj;
         item->setUserObject("await-button-press"_spr, obj);
-        return obj->m_task;
+        return std::move(obj->m_awaiter);
     }
 
     void onPress(CCObject* obj) {
@@ -63,9 +40,7 @@ public:
         item->m_pfnSelector = m_oldSelector;
         item->m_pListener = m_oldTarget;
         (m_oldTarget->*m_oldSelector)(obj);
-        if (!m_isCancelled()) {
-            m_finish(true);
-        }
+        (void)m_channel.first.send({});
         item->setUserObject("await-button-press"_spr, nullptr);
     }
 };
@@ -76,11 +51,11 @@ void playNewLocationTutorial() {
     auto* button = layer->getChildByIDRecursive("texture-loader-button"_spr);
     if (!button) return;
 
-    auto task = [](CCNode* button, CCLayer* layer) -> Task<void> {
+    auto task = [button, layer] -> arc::Future<void> {
         co_await awaitAction(button, CCEaseIn::create(CCFadeTo::create(0.5f, 0.f), 0.5f));
         button->setVisible(false);
 
-        const auto showButton = [](CCMenuItemSpriteExtra* button) -> Task<void> {
+        const auto showButton = [](CCMenuItemSpriteExtra* button) -> arc::Future<void> {
             auto pos = button->getParent()->convertToWorldSpace(button->getPosition());
             int z = CCScene::get()->getHighestChildZ() + 10;
 
@@ -109,7 +84,7 @@ void playNewLocationTutorial() {
                 )
             ));
 
-            co_await AwaitButtonPress::create(button);
+            (void)co_await AwaitButtonPress::create(button);
             arrow->removeFromParentAndCleanup(true);
         };
 
@@ -141,10 +116,10 @@ void playNewLocationTutorial() {
         }
 
         co_await showButton(texturesButton);
-    }(button, layer);
+    };
 
     // this would make an hjfod faint
-    auto* obj = MyObjWrapper<EventListener<Task<void>>>::create({});
-    obj->getValue().setFilter(task);
+    auto* obj = ObjWrapper<TaskHolder<void>>::create({});
+    obj->getValue().spawn(std::move(task), [] {});
     layer->setUserObject("tutorial"_spr, obj);
 }
