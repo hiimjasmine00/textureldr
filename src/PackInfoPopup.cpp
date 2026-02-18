@@ -62,11 +62,11 @@ std::filesystem::path PackInfoPopup::getPathInPack(const char* filename) const {
     }
 }
 
-bool PackInfoPopup::setup(std::shared_ptr<Pack> pack) {
-    m_pack = pack;
+bool PackInfoPopup::init() {
+    if (!Popup::init(320.f, 200.f, this->getPathInPack("GJ_square01.png").string().c_str())) return false;
 
     auto title = WackyBypassFont::create(
-        pack->getDisplayName().c_str(),
+        m_pack->getDisplayName().c_str(),
         this->getPathInPack("goldFont.fnt")
     );
     title->setPosition(
@@ -145,10 +145,7 @@ bool PackInfoPopup::setup(std::shared_ptr<Pack> pack) {
 PackInfoPopup* PackInfoPopup::create(const std::shared_ptr<Pack>& pack) {
     auto ret = new PackInfoPopup;
     ret->m_pack = pack;
-    if (ret->initAnchored(
-        320.f, 200.f, pack,
-        ret->getPathInPack("GJ_square01.png").string().c_str()
-    )) {
+    if (ret->init()) {
         ret->autorelease();
         return ret;
     }

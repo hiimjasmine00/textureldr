@@ -10,7 +10,7 @@ class PackNode;
 
 using namespace geode::prelude;
 
-class PackSelectPopup : public Popup<> {
+class PackSelectPopup : public Popup {
 protected:
     ScrollLayer* m_availableList = nullptr;
     ScrollLayer* m_appliedList = nullptr;
@@ -19,8 +19,7 @@ protected:
     size_t m_lastDragIdx = size_t(-1);
     PackListType m_dragListFrom, m_dragListTo;
 
-    bool setup() override { return true; }
-    bool init() override;
+    bool init();
 
     void updateList(
         ScrollLayer* list,

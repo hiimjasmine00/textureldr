@@ -5,7 +5,6 @@
 #include <Geode/modify/OptionsLayer.hpp>
 #include <Geode/modify/IDManager.hpp>
 #include <Geode/ui/BasedButtonSprite.hpp>
-#include "Tutorial.hpp"
 
 using namespace geode::prelude;
 
@@ -42,7 +41,6 @@ class $modify(MyOptionsLayer, OptionsLayer) {
     }
 };
 
-
 class $modify(MyVideoOptionsLayer, VideoOptionsLayer) {
     bool init() {
         if (!VideoOptionsLayer::init()) return false;
@@ -75,55 +73,3 @@ class $modify(MyVideoOptionsLayer, VideoOptionsLayer) {
         PackSelectPopup::create()->show();
     }
 };
-
-class $modify(MyMenuLayer, MenuLayer) {
-    bool init() {
-        if (!MenuLayer::init())
-            return false;
-
-        if (Mod::get()->getSavedValue<bool>("shown-moved-alert")) return true;
-
-        NodeIDs::provideFor(this);
-
-        auto menu = this->getChildByID("right-side-menu");
-
-        auto button = CCMenuItemSpriteExtra::create(
-            CCSprite::createWithSpriteFrameName("gj_folderBtn_001.png"),
-            this, menu_selector(MyMenuLayer::onTextureLdr)
-        );
-        button->setID("texture-loader-button"_spr);
-        menu->addChild(button);
-        menu->updateLayout();
-
-        return true;
-    }
-
-    void onTextureLdr(CCObject*) {
-        // Prompt where the button is relocated, since many mobile users use the high graphics mod, we want to direct them to the right place still.
-        if (GEODE_DESKTOP(true ||) Loader::get()->isModLoaded("weebify.high-graphics-android")) {
-            createQuickPopup(
-                "Woah!",
-                "Texture Loader has been moved into <cb>Graphics Settings</c>, go to graphics settings and click the <cg>Textures</c> button to manage your Texture Packs!", 
-                "Show me",
-                nullptr,
-                [](auto, auto) {
-                    Mod::get()->setSavedValue("shown-moved-alert", true);
-                    playNewLocationTutorial();
-                }
-            );
-        }
-        else {
-            createQuickPopup(
-                "Woah!",
-                "Texture Loader has been moved into <cb>Settings</c>, go to settings and click the <cg>Textures</c> button to manage your Texture Packs!",
-                "Show me",
-                nullptr,
-                [](auto, auto) {
-                    Mod::get()->setSavedValue("shown-moved-alert", true);
-                    playNewLocationTutorial();
-                }
-            );
-        }
-    }
-};
-

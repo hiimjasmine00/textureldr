@@ -5,14 +5,13 @@
 
 using namespace geode::prelude;
 
-class PackInfoPopup : public Popup<std::shared_ptr<Pack>> {
+class PackInfoPopup : public Popup {
 protected:
     std::shared_ptr<Pack> m_pack;
 
-    bool setup(std::shared_ptr<Pack> pack) override;
+    bool init();
 
     std::filesystem::path getPathInPack(const char* filename) const;
-
 public:
     static PackInfoPopup* create(const std::shared_ptr<Pack>& pack);
 };

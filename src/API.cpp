@@ -1,24 +1,14 @@
+#define GEODE_DEFINE_EVENT_EXPORTS
 #include "../include/TextureLoader.hpp"
 
 #include "PackManager.hpp"
 
 using namespace geode;
 
-namespace ext = geode::texture_loader;
+namespace api = geode::texture_loader;
 
-template <class>
-struct ToFilterImpl;
-
-template <class... Args>
-struct ToFilterImpl<geode::DispatchEvent<Args...>> {
-    using type = geode::DispatchFilter<Args...>;
-};
-
-template <class T>
-using ToFilter = typename ToFilterImpl<T>::type;
-
-ext::Pack convertPack(std::shared_ptr<Pack> const& pack) {
-    ext::Pack res;
+api::Pack convertPack(std::shared_ptr<Pack> const& pack) {
+    api::Pack res;
     res.id = pack->getID();
     res.name = pack->getDisplayName();
     res.path = pack->getOriginPath();
@@ -32,14 +22,9 @@ ext::Pack convertPack(std::shared_ptr<Pack> const& pack) {
     return res;
 }
 
-$execute {
-    new EventListener(+[](std::vector<ext::Pack>* res) {
-        *res = utils::ranges::map<std::vector<ext::Pack>>(PackManager::get()->getAvailablePacks(), convertPack);
-        return ListenerResult::Stop;
-    }, ToFilter<ext::impl::EventGetAvailablePacks>("geode.texture-loader/v1/get-available-packs"));
-
-    new EventListener(+[](std::vector<ext::Pack>* res) {
-        *res = utils::ranges::map<std::vector<ext::Pack>>(PackManager::get()->getAppliedPacks(), convertPack);
-        return ListenerResult::Stop;
-    }, ToFilter<ext::impl::EventGetAppliedPacks>("geode.texture-loader/v1/get-applied-packs"));
+std::vector<api::Pack> api::getAvailablePacks() {
+    return utils::ranges::map<std::vector<api::Pack>>(PackManager::get()->getAvailablePacks(), convertPack);
+}
+std::vector<api::Pack> api::getAppliedPacks() {
+    return utils::ranges::map<std::vector<api::Pack>>(PackManager::get()->getAppliedPacks(), convertPack);
 }
