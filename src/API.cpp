@@ -5,10 +5,10 @@
 
 using namespace geode;
 
-namespace ext = geode::texture_loader;
+namespace api = geode::texture_loader;
 
-ext::Pack convertPack(std::shared_ptr<Pack> const& pack) {
-    ext::Pack res;
+api::Pack convertPack(std::shared_ptr<Pack> const& pack) {
+    api::Pack res;
     res.id = pack->getID();
     res.name = pack->getDisplayName();
     res.path = pack->getOriginPath();
@@ -22,10 +22,9 @@ ext::Pack convertPack(std::shared_ptr<Pack> const& pack) {
     return res;
 }
 
-std::vector<ext::Pack> ext::getAvailablePacks() {
-    return utils::ranges::map<std::vector<ext::Pack>>(PackManager::get()->getAvailablePacks(), convertPack);
+std::vector<api::Pack> api::getAvailablePacks() {
+    return utils::ranges::map<std::vector<api::Pack>>(PackManager::get()->getAvailablePacks(), convertPack);
 }
-
-std::vector<ext::Pack> ext::getAppliedPacks() {
-    return utils::ranges::map<std::vector<ext::Pack>>(PackManager::get()->getAppliedPacks(), convertPack);
+std::vector<api::Pack> api::getAppliedPacks() {
+    return utils::ranges::map<std::vector<api::Pack>>(PackManager::get()->getAppliedPacks(), convertPack);
 }

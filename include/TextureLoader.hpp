@@ -9,15 +9,14 @@
 #include <string>
 
 #ifdef MY_MOD_ID
-#undef MY_MOD_ID
+    #undef MY_MOD_ID
 #endif
-
 #define MY_MOD_ID "geode.texture-loader"
 
 namespace geode::texture_loader {
 
 inline bool isLoaded() {
-    return geode::Loader::get()->isModLoaded("geode.texture-loader");
+    return geode::Loader::get()->isModLoaded(MY_MOD_ID);
 }
 
 struct Pack {
@@ -33,7 +32,6 @@ struct Pack {
 };
 
 inline std::vector<Pack> getAvailablePacks() GEODE_EVENT_EXPORT_NORES(&getAvailablePacks, ());
-
 inline std::vector<Pack> getAppliedPacks() GEODE_EVENT_EXPORT_NORES(&getAppliedPacks, ());
 
 }

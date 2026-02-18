@@ -19,7 +19,7 @@ protected:
     size_t m_lastDragIdx = size_t(-1);
     PackListType m_dragListFrom, m_dragListTo;
 
-    bool init() override;
+    bool init();
 
     void updateList(
         ScrollLayer* list,

@@ -37,7 +37,7 @@ class $modify(ReloadMenuLayer, MenuLayer) {
 static CCSize LAYER_SIZE = { 230.f, 210.f };
 
 bool PackSelectPopup::init() {
-    if (!Popup::init(440.f, 290.f, "GJ_square01.png")) return false;
+    if (!Popup::init(440.f, 290.f)) return false;
 
     GameManager::get()->fadeInMenuMusic();
 

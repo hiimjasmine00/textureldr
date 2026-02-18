@@ -12,7 +12,6 @@ protected:
     bool init(const std::shared_ptr<Pack>& pack);
 
     std::filesystem::path getPathInPack(const char* filename) const;
-
 public:
     static PackInfoPopup* create(const std::shared_ptr<Pack>& pack);
 };

@@ -69,7 +69,7 @@ bool PackInfoPopup::init(const std::shared_ptr<Pack>& pack) {
     m_pack = pack;
 
     auto title = WackyBypassFont::create(
-        pack->getDisplayName().c_str(),
+        m_pack->getDisplayName().c_str(),
         this->getPathInPack("goldFont.fnt")
     );
     title->setPosition(
