@@ -3,36 +3,27 @@
 
 using namespace geode::prelude;
 
-arc::Future<void> awaitAction(CCNode* target, CCFiniteTimeAction* action) {
-    auto [tx, rx] = arc::oneshot::channel<std::monostate>();
-
-    auto* func = CallFuncExt::create([tx = std::move(tx)] {
-        (void)tx.send({});
-    });
-    auto* seq = CCSequence::createWithTwoActions(action, func);
-    target->runAction(seq);
-    (void)co_await rx.recv();
-}
-
 class AwaitButtonPress : public CCObject {
-    std::pair<arc::oneshot::Sender<std::monostate>, arc::oneshot::Receiver<std::monostate>> m_channel;
-    arc::oneshot::RecvAwaiter<std::monostate> m_awaiter;
+    Ref<CCSprite> m_arrow;
+    Function<void()> m_selector;
     SEL_MenuHandler m_oldSelector;
     CCObject* m_oldTarget;
 
-    AwaitButtonPress() : m_channel(arc::oneshot::channel<std::monostate>()), m_awaiter(m_channel.second.recv()) {
+    AwaitButtonPress() {
         this->autorelease();
     }
 
 public:
-    static arc::oneshot::RecvAwaiter<std::monostate> create(CCMenuItem* item) {
+    static AwaitButtonPress* create(CCMenuItem* item, CCSprite* arrow, Function<void()> selector) {
         auto* obj = new AwaitButtonPress();
+        obj->m_arrow = arrow;
+        obj->m_selector = std::move(selector);
         obj->m_oldSelector = item->m_pfnSelector;
         obj->m_oldTarget = item->m_pListener;
         item->m_pfnSelector = menu_selector(AwaitButtonPress::onPress);
         item->m_pListener = obj;
         item->setUserObject("await-button-press"_spr, obj);
-        return std::move(obj->m_awaiter);
+        return obj;
     }
 
     void onPress(CCObject* obj) {
@@ -40,9 +31,42 @@ public:
         item->m_pfnSelector = m_oldSelector;
         item->m_pListener = m_oldTarget;
         (m_oldTarget->*m_oldSelector)(obj);
-        (void)m_channel.first.send({});
+        m_arrow->removeFromParentAndCleanup(true);
+        m_selector();
         item->setUserObject("await-button-press"_spr, nullptr);
     }
+};
+
+void showButton(CCMenuItemSpriteExtra* button, Function<void()> onPress) {
+    auto pos = button->getParent()->convertToWorldSpace(button->getPosition());
+    int z = CCScene::get()->getHighestChildZ() + 10;
+
+    auto* arrow = CCSprite::createWithSpriteFrameName("navArrowBtn_001.png");
+    arrow->setRotation(90);
+    arrow->setPosition(button->getContentSize() / 2.f + ccp(0, 20));
+    arrow->runAction(CCRepeatForever::create(
+        CCSequence::createWithTwoActions(
+            CCMoveBy::create(0.2f, ccp(0, 10.f)),
+            CCMoveBy::create(0.2f, ccp(0, -10.f))
+        )
+    ));
+    arrow->setZOrder(z + 10);
+    button->addChild(arrow);
+
+    // two circles
+    button->runAction(CCRepeatForever::create(
+        CCSequence::createWithTwoActions(
+            CallFuncExt::create([=] {
+                auto* circle = CCCircleWave::create(0.f, 100.f, 0.5f, false, true);
+                circle->setPosition(pos);
+                circle->setZOrder(z);
+                CCScene::get()->addChild(circle);
+            }),
+            CCDelayTime::create(0.5f)
+        )
+    ));
+
+    AwaitButtonPress::create(button, arrow, std::move(onPress));
 };
 
 void playNewLocationTutorial() {
@@ -51,77 +75,40 @@ void playNewLocationTutorial() {
     auto* button = layer->getChildByIDRecursive("texture-loader-button"_spr);
     if (!button) return;
 
-    auto task = [button, layer] -> arc::Future<void> {
-        co_await async::waitForMainThread([button, layer] -> arc::Future<void> {
-            co_await awaitAction(button, CCEaseIn::create(CCFadeTo::create(0.5f, 0.f), 0.5f));
-            button->setVisible(false);
+    button->runAction(CCSequence::createWithTwoActions(CCEaseIn::create(CCFadeTo::create(0.5f, 0.f), 0.5f), CallFuncExt::create([button, layer] {
+        button->setVisible(false);
+        
+        auto* settingsBtn = typeinfo_cast<CCMenuItemSpriteExtra*>(layer->getChildByIDRecursive("settings-button"));
+        if (!settingsBtn) return;
 
-            const auto showButton = [](CCMenuItemSpriteExtra* button) -> arc::Future<void> {
-                auto pos = button->getParent()->convertToWorldSpace(button->getPosition());
-                int z = CCScene::get()->getHighestChildZ() + 10;
+        showButton(settingsBtn, [layer] {
+            layer->runAction(CCSequence::createWithTwoActions(CCDelayTime::create(0.6f), CallFuncExt::create([layer] {
+                auto* optionsLayer = layer->getChildByType<OptionsLayer*>(0);
+                // oh happy textures..
+                if (!optionsLayer) optionsLayer = CCScene::get()->getChildByType<OptionsLayer*>(0);
+                if (!optionsLayer) return;
+                
+                auto* texturesButton = typeinfo_cast<CCMenuItemSpriteExtra*>(optionsLayer->getChildByIDRecursive("texture-loader-button"_spr));
+                
+                // gotta go through the graphics button
+                if (!texturesButton) {
+                    auto* graphicsBtn = typeinfo_cast<CCMenuItemSpriteExtra*>(optionsLayer->getChildByIDRecursive("graphics-button"));
+                    if (!graphicsBtn) return;
 
-                Ref<CCSprite> arrow = CCSprite::createWithSpriteFrameName("navArrowBtn_001.png");
-                arrow->setRotation(90);
-                arrow->setPosition(button->getContentSize() / 2.f + ccp(0, 20));
-                arrow->runAction(CCRepeatForever::create(
-                    CCSequence::createWithTwoActions(
-                        CCMoveBy::create(0.2f, ccp(0, 10.f)),
-                        CCMoveBy::create(0.2f, ccp(0, -10.f))
-                    )
-                ));
-                arrow->setZOrder(z + 10);
-                button->addChild(arrow);
+                    showButton(graphicsBtn, [layer] {
+                        layer->runAction(CCSequence::createWithTwoActions(CCDelayTime::create(0.6f), CallFuncExt::create([layer] {
+                            auto* videoLayer = CCScene::get()->getChildByType<VideoOptionsLayer*>(0);
+                            if (!videoLayer) return;
 
-                // two circles
-                button->runAction(CCRepeatForever::create(
-                    CCSequence::createWithTwoActions(
-                        CallFuncExt::create([=] {
-                            auto* circle = CCCircleWave::create(0.f, 100.f, 0.5f, false, true);
-                            circle->setPosition(pos);
-                            circle->setZOrder(z);
-                            CCScene::get()->addChild(circle);
-                        }),
-                        CCDelayTime::create(0.5f)
-                    )
-                ));
-
-                (void)co_await AwaitButtonPress::create(button);
-                arrow->removeFromParentAndCleanup(true);
-            };
-
-            auto* settingsBtn = typeinfo_cast<CCMenuItemSpriteExtra*>(layer->getChildByIDRecursive("settings-button"));
-            if (!settingsBtn) co_return;
-            co_await showButton(settingsBtn);
-
-            co_await awaitAction(layer, CCDelayTime::create(0.6f));
-
-            auto* optionsLayer = layer->getChildByType<OptionsLayer*>(0);
-            // oh happy textures..
-            if (!optionsLayer) optionsLayer = CCScene::get()->getChildByType<OptionsLayer*>(0);
-            if (!optionsLayer) co_return;
-
-            auto* texturesButton = typeinfo_cast<CCMenuItemSpriteExtra*>(optionsLayer->getChildByIDRecursive("texture-loader-button"_spr));
-
-            // gotta go through the graphics button
-            if (!texturesButton) {
-                auto* graphicsBtn = typeinfo_cast<CCMenuItemSpriteExtra*>(optionsLayer->getChildByIDRecursive("graphics-button"));
-                if (!graphicsBtn) co_return;
-                co_await showButton(graphicsBtn);
-
-                co_await awaitAction(layer, CCDelayTime::create(0.6f));
-
-                auto* videoLayer = CCScene::get()->getChildByType<VideoOptionsLayer*>(0);
-                if (!videoLayer) co_return;
-                texturesButton = typeinfo_cast<CCMenuItemSpriteExtra*>(videoLayer->getChildByIDRecursive("texture-loader-button"_spr));
-                if (!texturesButton) co_return;
-            }
-
-            co_await showButton(texturesButton);
+                            auto* texturesButton = typeinfo_cast<CCMenuItemSpriteExtra*>(videoLayer->getChildByIDRecursive("texture-loader-button"_spr));
+                            if (texturesButton) showButton(texturesButton, [] {});
+                        })));
+                    });
+                }
+                else {
+                    showButton(texturesButton, [] {});
+                }
+            })));
         });
-    };
-
-    // this would make an hjfod faint
-    auto* obj = ObjWrapper<TaskHolder<void>>::create({});
-    obj->getValue().spawn(std::move(task), [] {});
-    layer->setUserObject("tutorial"_spr, obj);
+    })));
 }
