@@ -52,70 +52,72 @@ void playNewLocationTutorial() {
     if (!button) return;
 
     auto task = [button, layer] -> arc::Future<void> {
-        co_await awaitAction(button, CCEaseIn::create(CCFadeTo::create(0.5f, 0.f), 0.5f));
-        button->setVisible(false);
+        co_await async::waitForMainThread([button, layer] -> arc::Future<void> {
+            co_await awaitAction(button, CCEaseIn::create(CCFadeTo::create(0.5f, 0.f), 0.5f));
+            button->setVisible(false);
 
-        const auto showButton = [](CCMenuItemSpriteExtra* button) -> arc::Future<void> {
-            auto pos = button->getParent()->convertToWorldSpace(button->getPosition());
-            int z = CCScene::get()->getHighestChildZ() + 10;
+            const auto showButton = [](CCMenuItemSpriteExtra* button) -> arc::Future<void> {
+                auto pos = button->getParent()->convertToWorldSpace(button->getPosition());
+                int z = CCScene::get()->getHighestChildZ() + 10;
 
-            Ref<CCSprite> arrow = CCSprite::createWithSpriteFrameName("navArrowBtn_001.png");
-            arrow->setRotation(90);
-            arrow->setPosition(button->getContentSize() / 2.f + ccp(0, 20));
-            arrow->runAction(CCRepeatForever::create(
-                CCSequence::createWithTwoActions(
-                    CCMoveBy::create(0.2f, ccp(0, 10.f)),
-                    CCMoveBy::create(0.2f, ccp(0, -10.f))
-                )
-            ));
-            arrow->setZOrder(z + 10);
-            button->addChild(arrow);
+                Ref<CCSprite> arrow = CCSprite::createWithSpriteFrameName("navArrowBtn_001.png");
+                arrow->setRotation(90);
+                arrow->setPosition(button->getContentSize() / 2.f + ccp(0, 20));
+                arrow->runAction(CCRepeatForever::create(
+                    CCSequence::createWithTwoActions(
+                        CCMoveBy::create(0.2f, ccp(0, 10.f)),
+                        CCMoveBy::create(0.2f, ccp(0, -10.f))
+                    )
+                ));
+                arrow->setZOrder(z + 10);
+                button->addChild(arrow);
 
-            // two circles
-            button->runAction(CCRepeatForever::create(
-                CCSequence::createWithTwoActions(
-                    CallFuncExt::create([=] {
-                        auto* circle = CCCircleWave::create(0.f, 100.f, 0.5f, false, true);
-                        circle->setPosition(pos);
-                        circle->setZOrder(z);
-                        CCScene::get()->addChild(circle);
-                    }),
-                    CCDelayTime::create(0.5f)
-                )
-            ));
+                // two circles
+                button->runAction(CCRepeatForever::create(
+                    CCSequence::createWithTwoActions(
+                        CallFuncExt::create([=] {
+                            auto* circle = CCCircleWave::create(0.f, 100.f, 0.5f, false, true);
+                            circle->setPosition(pos);
+                            circle->setZOrder(z);
+                            CCScene::get()->addChild(circle);
+                        }),
+                        CCDelayTime::create(0.5f)
+                    )
+                ));
 
-            (void)co_await AwaitButtonPress::create(button);
-            arrow->removeFromParentAndCleanup(true);
-        };
+                (void)co_await AwaitButtonPress::create(button);
+                arrow->removeFromParentAndCleanup(true);
+            };
 
-        auto* settingsBtn = typeinfo_cast<CCMenuItemSpriteExtra*>(layer->getChildByIDRecursive("settings-button"));
-        if (!settingsBtn) co_return;
-        co_await showButton(settingsBtn);
-
-        co_await awaitAction(layer, CCDelayTime::create(0.6f));
-
-        auto* optionsLayer = layer->getChildByType<OptionsLayer*>(0);
-        // oh happy textures..
-        if (!optionsLayer) optionsLayer = CCScene::get()->getChildByType<OptionsLayer*>(0);
-        if (!optionsLayer) co_return;
-
-        auto* texturesButton = typeinfo_cast<CCMenuItemSpriteExtra*>(optionsLayer->getChildByIDRecursive("texture-loader-button"_spr));
-
-        // gotta go through the graphics button
-        if (!texturesButton) {
-            auto* graphicsBtn = typeinfo_cast<CCMenuItemSpriteExtra*>(optionsLayer->getChildByIDRecursive("graphics-button"));
-            if (!graphicsBtn) co_return;
-            co_await showButton(graphicsBtn);
+            auto* settingsBtn = typeinfo_cast<CCMenuItemSpriteExtra*>(layer->getChildByIDRecursive("settings-button"));
+            if (!settingsBtn) co_return;
+            co_await showButton(settingsBtn);
 
             co_await awaitAction(layer, CCDelayTime::create(0.6f));
 
-            auto* videoLayer = CCScene::get()->getChildByType<VideoOptionsLayer*>(0);
-            if (!videoLayer) co_return;
-            texturesButton = typeinfo_cast<CCMenuItemSpriteExtra*>(videoLayer->getChildByIDRecursive("texture-loader-button"_spr));
-            if (!texturesButton) co_return;
-        }
+            auto* optionsLayer = layer->getChildByType<OptionsLayer*>(0);
+            // oh happy textures..
+            if (!optionsLayer) optionsLayer = CCScene::get()->getChildByType<OptionsLayer*>(0);
+            if (!optionsLayer) co_return;
 
-        co_await showButton(texturesButton);
+            auto* texturesButton = typeinfo_cast<CCMenuItemSpriteExtra*>(optionsLayer->getChildByIDRecursive("texture-loader-button"_spr));
+
+            // gotta go through the graphics button
+            if (!texturesButton) {
+                auto* graphicsBtn = typeinfo_cast<CCMenuItemSpriteExtra*>(optionsLayer->getChildByIDRecursive("graphics-button"));
+                if (!graphicsBtn) co_return;
+                co_await showButton(graphicsBtn);
+
+                co_await awaitAction(layer, CCDelayTime::create(0.6f));
+
+                auto* videoLayer = CCScene::get()->getChildByType<VideoOptionsLayer*>(0);
+                if (!videoLayer) co_return;
+                texturesButton = typeinfo_cast<CCMenuItemSpriteExtra*>(videoLayer->getChildByIDRecursive("texture-loader-button"_spr));
+                if (!texturesButton) co_return;
+            }
+
+            co_await showButton(texturesButton);
+        });
     };
 
     // this would make an hjfod faint
